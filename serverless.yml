@@ -1,0 +1,93 @@
+# Welcome to Serverless!
+#
+# This file is the main config file for your service.
+# It's very minimal at this point and uses default values.
+# You can always add more config options for more control.
+# We've included some commented out config examples here.
+# Just uncomment any of them to get that config option.
+#
+# For full config options, check the docs:
+#    docs.serverless.com
+#
+# Happy Coding!
+
+service: unAttachedEBSManager
+#app: your-app-name
+#tenant: your-tenant-name
+
+# You can pin your service to only deploy with a specific Serverless version
+# Check out our docs for more details
+# frameworkVersion: "=X.X.X"
+frameworkVersion: ">=1.28.0 <2.0.0"
+
+plugins:
+  - serverless-pseudo-parameters
+
+provider:
+  name: aws
+  runtime: go1.x
+  timeout: 300
+  region: us-east-1
+  stage: dev
+
+
+package:
+ exclude:
+   - ./**
+ include:
+   - ./bin/**
+
+functions:
+
+  monitor:
+    handler: bin/monitor
+    events:
+      - schedule: cron(0 12 * * ? *)
+    role: arn:aws:iam::#{AWS::AccountId}:role/lambda-allow-ebs-cleaner-to-manage-volumes-role
+
+    environment:
+      SAVE_VOLUME_TAG: CCE_Meta_dont_delete_when_unmounted
+      # DEBUG_MODE_ENABLED: true
+
+resources:
+  Resources:
+    MainRole:
+      Type: AWS::IAM::Role
+      Properties:
+        Path: /
+        RoleName: 'lambda-allow-ebs-cleaner-to-manage-volumes-role'
+        AssumeRolePolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+        Policies:
+          - PolicyName: ManageVolumeAndLogsForEbsVolumeManager
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - ec2:DeleteVolume
+                    - ec2:DescribeVolumes
+                    - ec2:DescribeRegions
+                  Resource:
+                    - '*'
+
+                - Effect: Allow
+                  Action:
+                    - logs:CreateLogGroup
+                    - logs:CreateLogStream
+                    - logs:PutLogEvents
+                  Resource:
+                    - 'Fn::Join':
+                      - ':'
+                      -
+                        - 'arn:aws:logs'
+                        - Ref: 'AWS::Region'
+                        - Ref: 'AWS::AccountId'
+                        - 'log-group:/aws/lambda/*:*:*'
+
+
