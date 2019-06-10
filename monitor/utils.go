@@ -21,7 +21,8 @@ var data = map[string]map[string]float64{
 	"st1":      map[string]float64{},
 }
 
-func (aws Application) getRegions(cfg aws.Config) ([]Region, error) {
+// getRegions - Return a set of regions available to the account
+func (a Application) getRegions(cfg aws.Config) ([]Region, error) {
 	svc := ec2.New(cfg)
 	req := svc.DescribeRegionsRequest(&ec2.DescribeRegionsInput{})
 	regions, err := req.Send(context.Background())
@@ -37,6 +38,9 @@ func (aws Application) getRegions(cfg aws.Config) ([]Region, error) {
 	return listOfRegions, nil
 }
 
+// price - calculate price for a volume
+// 		yes this is janky as hell but the AWS pricing api was to much of a PITA and after a
+// 		day of getting no where I cheated and with this... sorry....
 func price(v ec2.Volume) (float64, float64) {
 	data["standard"]["price_per_gb"] = 0.10
 	data["gp2"]["price_per_gb"] = 0.10
@@ -62,9 +66,12 @@ func price(v ec2.Volume) (float64, float64) {
 
 }
 
-func listAvailableVolumes(cfg aws.Config) ([]ec2.Volume, error) {
+// listAvailableVolumes .. Get a list of volumes
+func (a Application) getAvailableVolumes() ([]ec2.Volume, error) {
 
-	svc := ec2.New(cfg)
+	// func listAvailableVolumes(cfg aws.Config) ([]ec2.Volume, error) {
+
+	svc := ec2.New(a.Client)
 	req := svc.DescribeVolumesRequest(&ec2.DescribeVolumesInput{
 		Filters: []ec2.Filter{
 			ec2.Filter{
@@ -160,12 +167,13 @@ func errorCheck(err error) {
 	}
 }
 
-func (aws Application) deleteVolume(volumeID string, fieldTags logrus.Fields) error {
+// deleteVolume Actually delete a volume
+func (a Application) deleteVolume(volumeID string, fieldTags logrus.Fields) error {
 	// func deleteVolume(volumeID string, fieldTags logrus.Fields) {
 
 	if noOpModeEnabled == false {
 		log.WithFields(fieldTags).Warn("Deleting Volume")
-		svc := ec2.New(aws.Client)
+		svc := ec2.New(a.Client)
 		req := svc.DeleteVolumeRequest(&ec2.DeleteVolumeInput{
 			VolumeId: &volumeID,
 		})

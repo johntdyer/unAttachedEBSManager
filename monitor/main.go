@@ -120,7 +120,7 @@ func handler() error {
 		ebsCleaner.Client.Region = region.Name
 
 		// Get list of ebs volumes that are unattached
-		volumes, err := listAvailableVolumes(ebsCleaner.Client)
+		volumes, err := ebsCleaner.getAvailableVolumes()
 		errorCheck(err)
 
 		// Update structs
