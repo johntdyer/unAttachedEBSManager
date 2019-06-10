@@ -47,7 +47,8 @@ functions:
 
     environment:
       SAVE_VOLUME_TAG: CCE_Meta_dont_delete_when_unmounted
-      # DEBUG_MODE_ENABLED: true
+      APPLICATION_LOG_LEVEL: info
+      NO_OP_MODE_TRUE: false
 
 resources:
   Resources:

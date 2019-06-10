@@ -160,16 +160,22 @@ func errorCheck(err error) {
 	}
 }
 
-func (aws Application) deleteVolume(volumeID string, fieldTags logrus.Fields) {
+func (aws Application) deleteVolume(volumeID string, fieldTags logrus.Fields) error {
 	// func deleteVolume(volumeID string, fieldTags logrus.Fields) {
-	log.WithFields(fieldTags).Warn("Deleting Volume")
-	// svc := ec2.New(cfg)
-	// req := svc.DeleteVolumeRequest(&ec2.DeleteVolumeInput{
-	// 	VolumeId: &volumeID,
-	// })
-	// _, err := req.Send(context.Background())
 
-	// return err
+	if noOpModeEnabled == false {
+		log.WithFields(fieldTags).Warn("Deleting Volume")
+		svc := ec2.New(aws.Client)
+		req := svc.DeleteVolumeRequest(&ec2.DeleteVolumeInput{
+			VolumeId: &volumeID,
+		})
+		_, err := req.Send(context.Background())
+		return err
+	}
+
+	log.WithFields(fieldTags).Warn("[NO OP] -- Would have deleted volume")
+	return nil
+
 }
 
 // func (aws Application) getPrice(volume ec2.Volume) float64 {

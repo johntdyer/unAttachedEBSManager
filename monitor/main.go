@@ -38,6 +38,7 @@ type Application struct {
 
 var (
 	defaulSaveVolumeTag  = "CCE_Meta_dont_delete_when_unmounted"
+	noOpModeEnabled      bool
 	log                  = logrus.New()
 	volumesDeleted       int
 	volumesTagged        int
@@ -59,14 +60,32 @@ func init() {
 	}
 	runtimeFormatter := &runtime.Formatter{ChildFormatter: &childFormatter}
 	log.Formatter = runtimeFormatter
-
-	if os.Getenv("DEBUG_MODE_ENABLED") == "" {
+	log.Info("Application initalizing")
+	// Set up logger
+	if os.Getenv("APPLICATION_LOG_LEVEL") == "" {
+		log.Info("Using default log level of INFO")
 		log.Level = logrus.InfoLevel
-
 	} else {
-		log.Level = logrus.DebugLevel
+		log.Infof("Switching to log level %s", os.Getenv("APPLICATION_LOG_LEVEL"))
+		log.Level, err = logrus.ParseLevel(os.Getenv("APPLICATION_LOG_LEVEL"))
+		errorCheck(err)
 	}
 
+	// Set up logger
+	if os.Getenv("NO_OP_MODE_TRUE") == "" {
+		log.Info("No Op Mode not set, using default of false")
+		noOpModeEnabled = false
+	} else {
+		if os.Getenv("NO_OP_MODE_TRUE") == "true" {
+			log.Warn("No OP Mode enabled")
+			noOpModeEnabled = true
+		} else {
+			log.Info("No OP Mode set to false via config")
+			noOpModeEnabled = false
+		}
+	}
+
+	// Setup save volume tag
 	if os.Getenv("SAVE_VOLUME_TAG") != "" {
 		defaulSaveVolumeTag = os.Getenv("SAVE_VOLUME_TAG")
 
@@ -80,7 +99,7 @@ func init() {
 		}).Info("Using default save environment variable")
 	}
 
-	log.Info("Application initialized")
+	log.Info("Application initalization completed")
 }
 
 func handler() error {
