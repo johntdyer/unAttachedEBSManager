@@ -38,10 +38,10 @@ func (a Application) getRegions(cfg aws.Config) ([]Region, error) {
 	return listOfRegions, nil
 }
 
-// price - calculate price for a volume
+// calculateCostsAndLosses - calculate price for a volume
 // 		yes this is janky as hell but the AWS pricing api was to much of a PITA and after a
 // 		day of getting no where I cheated and with this... sorry....
-func price(v ec2.Volume) (float64, float64) {
+func calculateCostsAndLosses(v ec2.Volume) (float64, float64) {
 	data["standard"]["price_per_gb"] = 0.10
 	data["gp2"]["price_per_gb"] = 0.10
 	data["io1"]["price_per_gb"] = 0.125
@@ -66,10 +66,8 @@ func price(v ec2.Volume) (float64, float64) {
 
 }
 
-// listAvailableVolumes .. Get a list of volumes
+// getAvailableVolumes .. Get a list of volumes
 func (a Application) getAvailableVolumes() ([]ec2.Volume, error) {
-
-	// func listAvailableVolumes(cfg aws.Config) ([]ec2.Volume, error) {
 
 	svc := ec2.New(a.Client)
 	req := svc.DescribeVolumesRequest(&ec2.DescribeVolumesInput{
@@ -98,12 +96,12 @@ func processVolume(volume ec2.Volume) {
 		iops = *volume.Iops
 	}
 	DaysHuman, daysOld, _ := doDateMath(volume)
-	futureCostPerMonth, moneyWasted := price(volume)
+	futureCostPerMonth, moneyWasted := calculateCostsAndLosses(volume)
 	totalWasted = totalWasted + math.Round(moneyWasted)
 	futureSavingsPerYear = futureSavingsPerYear + math.Round(futureCostPerMonth*12)
 
 	// Check if tag is present to indicate we want to skip this volume
-	if checkIfSkipBasedOnTag(volume.Tags, defaulSaveVolumeTag) {
+	if checkIfSkipBasedOnTag(volume.Tags, defaultSaveVolumeTag) {
 
 		log.WithFields(logrus.Fields{
 			"VolumeID":        *volume.VolumeId,
@@ -133,7 +131,7 @@ func processVolume(volume ec2.Volume) {
 	}
 }
 
-// search tags to see if our skipTag exists
+//checkIfSkipBasedOnTag .. search tags to see if our skipTag exists
 func checkIfSkipBasedOnTag(volume []ec2.Tag, tagName string) bool {
 	//
 	for _, t := range volume {
@@ -147,7 +145,7 @@ func checkIfSkipBasedOnTag(volume []ec2.Tag, tagName string) bool {
 
 }
 
-// Do date math to get age, human readable realative age, and days old
+// doDateMath .. Do date math to get age, human readable realative age, and days old
 func doDateMath(v ec2.Volume) (string, int, error) {
 	g, err := goment.New(*v.CreateTime)
 	errorCheck(err)
@@ -160,7 +158,7 @@ func doDateMath(v ec2.Volume) (string, int, error) {
 	return g.FromNow(), daysOld, nil
 }
 
-// Generic error handler
+// errorCheck .. Generic error handler
 func errorCheck(err error) {
 	if err != nil {
 		log.Errorf("%+v\n", errors.Wrap(err, ""))

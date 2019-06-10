@@ -3,18 +3,13 @@ package main
 import (
 	"os"
 
-	// "v/github.com/aws/aws-sdk-go@v1.14.7/models/endpoints"
 	runtime "github.com/banzaicloud/logrus-runtime-formatter"
 
 	"github.com/sirupsen/logrus"
 
-	// "github.com/aws/aws-lambda-go/lambda"
-
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/aws/external"
-	// "github.com/aws/aws-sdk-go/aws/awserr"
-	// "github.com/aws/aws-sdk-go/aws/session"
 )
 
 // Region ...
@@ -33,11 +28,10 @@ type Application struct {
 	Client  aws.Config
 	Counter map[string]*Counter
 	Regions []Region
-	// Regions2 map[string]*Region
 }
 
 var (
-	defaulSaveVolumeTag  = "CCE_Meta_dont_delete_when_unmounted"
+	defaultSaveVolumeTag = "CCE_Meta_dont_delete_when_unmounted"
 	noOpModeEnabled      bool
 	log                  = logrus.New()
 	volumesDeleted       int
@@ -53,13 +47,21 @@ func init() {
 	cfg, err := external.LoadDefaultAWSConfig()
 	errorCheck(err)
 	ebsCleaner.Client = cfg
+
+	// Set default region to start application
 	ebsCleaner.Client.Region = "us-east-1"
+
+	// Default log configs
 	childFormatter := logrus.TextFormatter{
 		DisableColors: false,
 		FullTimestamp: true,
 	}
+
+	// Add runtime log formatter
 	runtimeFormatter := &runtime.Formatter{ChildFormatter: &childFormatter}
 	log.Formatter = runtimeFormatter
+
+	// environment derived configuration
 	log.Info("Application initalizing")
 	// Set up logger
 	if os.Getenv("APPLICATION_LOG_LEVEL") == "" {
@@ -71,7 +73,7 @@ func init() {
 		errorCheck(err)
 	}
 
-	// Set up logger
+	// Set up no op mode
 	if os.Getenv("NO_OP_MODE_TRUE") == "" {
 		log.Info("No Op Mode not set, using default of false")
 		noOpModeEnabled = false
@@ -87,7 +89,7 @@ func init() {
 
 	// Setup save volume tag
 	if os.Getenv("SAVE_VOLUME_TAG") != "" {
-		defaulSaveVolumeTag = os.Getenv("SAVE_VOLUME_TAG")
+		defaultSaveVolumeTag = os.Getenv("SAVE_VOLUME_TAG")
 
 		log.WithFields(logrus.Fields{
 			"SAVE_VOLUME_TAG": os.Getenv("SAVE_VOLUME_TAG"),
@@ -102,6 +104,7 @@ func init() {
 	log.Info("Application initalization completed")
 }
 
+// entry point into lambda function
 func handler() error {
 
 	// Get list of all regions
